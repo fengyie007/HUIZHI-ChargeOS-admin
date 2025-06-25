@@ -418,169 +418,47 @@ export default {
   destroyed() {},
 };
 </script>
+
+
 <style scoped lang="scss">
-.content {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  padding: 10px;
-  background-color: #f3f6ff;
-
-  .left {
-    width: 250px;
-    height: calc(100vh - 105px);
-    overflow: auto;
-    background-color: #fff;
-    border: 1px solid #f1eded;
-    border-radius: 2px;
-    .left-title {
-      height: 50px;
-      line-height: 50px;
-      font-size: 14px;
-      font-weight: 400;
-      color: #333;
-      padding-left: 10px;
-      border-bottom: 1px solid #f4eded;
-    }
-    .list {
-      height: calc(100% - 60px);
-      .list-input {
-        margin-top: 10px;
-      }
-      .tree {
-        margin-top: 5px;
-        height: calc(100% - 50px);
-        overflow: auto;
-      }
-    }
-  }
-  .right {
-    flex: 1;
-    height: calc(100vh - 105px);
-    background-color: #fff;
-    padding: 0 10px;
-
-    .right-title {
-      font-size: 22px;
-      font-weight: 400;
-      height: 50px;
-      line-height: 50px;
-      color: #333;
-    }
-    .name {
-      display: inline-block;
-      background-color: #e8ebf7;
-      color: #3156dd;
-      padding: 6px 8px;
-      border-radius: 5px;
-    }
-    .list {
-      // display: flex;
-      // flex-wrap: wrap;
-      margin-top: 20px;
-      height: calc(100% - 180px);
-      overflow: auto;
-      .station {
-        margin-right: 40px;
-        margin-bottom: 30px;
-        width: 304px;
-        height: 230px;
-        display: inline-block;
-        background: linear-gradient(8deg, #fafbff, #ffffff);
-        border: 1px solid #ebefff;
-        box-shadow: 0 0px 5px #d3e0f0;
-        position: relative;
-        .operateBtn {
-          position: absolute;
-          bottom: 3px;
-          right: 5px;
-          font-size: 30rpx;
-          cursor: pointer;
-          color: #5069e7;
-        }
-        .info {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          width: 100%;
-          height: 45px;
-          background: #e8ebf7;
-          padding: 0 10px;
-          .num {
-            display: flex;
-            align-items: center;
-            > img {
-              height: 18px;
-              margin-right: 5px;
-            }
-          }
-          .status {
-            color: #5069e7;
-          }
-          .status1 {
-            color: #eaaf32;
-          }
-          .status2 {
-            color: #ec2c13;
-          }
-        }
-        .mess {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: center;
-
-          .item {
-            width: 30%;
-            margin-right: 10px;
-            margin-top: 30px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-
-            &-value {
-              font-size: 18px;
-              font-weight: 500;
-              color: #333;
-              margin-bottom: 5px;
-              white-space: nowrap;
-            }
-            &-name {
-              font-size: 14px;
-              font-weight: 400;
-              color: #666;
-            }
-          }
-        }
-      }
-    }
-  }
-}
-.operate {
-  display: flex;
-  flex-direction: column;
-  button {
-    margin-bottom: 7px;
-  }
-  ::v-deep .el-button + .el-button {
-    margin-left: 0px;
-  }
+.content{
+    display: flex;
 }
 
-::-webkit-scrollbar {
-  width: 8px; /* 设置滚动条的宽度 */
-  height: 6px;
+.left{
+	width: 250px;
+
+	.list{
+		width: 250px;
+	    display: flex;
+	    flex-direction: column;
+	}
 }
 
-/* 自定义滚动条滑块样式 */
-::-webkit-scrollbar-thumb {
-  background-color: #b6bfec; /* 设置滑块的颜色 */
-  border-radius: 5px; /* 设置滑块的圆角 */
+.tree{
+	width: 250px;
 }
 
-/* 自定义滚动条轨道样式 */
-::-webkit-scrollbar-track {
-  background-color: #f1f1f1; /* 设置轨道的颜色 */
+.right{
+	flex: 1;
+	margin-left: 100px;
+}
+
+.list{
+	display: flex;
+    width: 100%;
+}
+
+.station{
+	width: 25%;
+}
+
+.item{
+	display: flex;
+}
+
+.item-value{
+	margin-right: 20px;
+	width: 60px;
 }
 </style>

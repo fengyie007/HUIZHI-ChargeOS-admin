@@ -1,464 +1,415 @@
-<!--  -->
 <template>
-  <div class="content">
-    <div class="left">
-      <div class="left-title">充电站列表</div>
-      <div class="list">
-        <div class="list-input">
-          <el-input placeholder="输入关键字进行搜索" v-model="filterText">
-          </el-input>
-        </div>
-        <div class="tree">
-          <el-tree
-            class="filter-tree"
-            :data="dataList"
-            :props="defaultProps"
-            :default-checked-keys="defaultkeys"
-            default-expand-all
-            node-key="stationId"
-            highlight-current
-            @node-click="handleNodeClick"
-            :filter-node-method="filterNode"
-            ref="tree"
-          >
-          </el-tree>
-        </div>
+  <div class="app-container">
+    <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
+      <el-form-item label="站点名称" prop="stationName">
+        <el-input
+          v-model="queryParams.stationName"
+          placeholder="请输入站点名称"
+          clearable
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item label="地址" prop="address">
+        <el-input
+          v-model="queryParams.address"
+          placeholder="请输入地址"
+          clearable
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item label="平台类型" prop="deviceType">
+        <el-select v-model="queryParams.deviceType" placeholder="请选择平台类型" clearable>
+          <el-option
+            v-for="dict in dict.type.device_type"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="互联互通" prop="isHlht">
+        <el-select v-model="queryParams.isHlht" placeholder="请选择是否来自互联互通" clearable>
+          <el-option
+            v-for="dict in dict.type.sys_yes_no"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="互联编号" prop="hlhtId">
+        <el-input
+          v-model="queryParams.hlhtId"
+          placeholder="请输入互联互通编号"
+          clearable
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+        <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-row :gutter="10" class="mb8">
+      <el-col :span="1.5">
+        <el-button
+          type="primary"
+          plain
+          icon="el-icon-plus"
+          size="mini"
+          @click="handleAdd"
+          v-hasPermi="['operator:station:add']"
+        >新增
+        </el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="success"
+          plain
+          icon="el-icon-edit"
+          size="mini"
+          :disabled="single"
+          @click="handleUpdate"
+          v-hasPermi="['operator:station:edit']"
+        >修改
+        </el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="danger"
+          plain
+          icon="el-icon-delete"
+          size="mini"
+          :disabled="multiple"
+          @click="handleDelete"
+          v-hasPermi="['operator:station:remove']"
+        >删除
+        </el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="warning"
+          plain
+          icon="el-icon-download"
+          size="mini"
+          @click="handleExport"
+          v-hasPermi="['operator:station:export']"
+        >导出
+        </el-button>
+      </el-col>
+      <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
+    </el-row>
+
+    <el-table v-loading="loading" :data="stationList" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="55" align="center"/>
+      <el-table-column label="站点名称" width="120" align="center" prop="stationName"/>
+      <el-table-column label="地址" width="160" align="center" prop="address"/>
+      <el-table-column label="经度" align="center" prop="lat"/>
+      <el-table-column label="纬度" align="center" prop="lng"/>
+      <el-table-column label="停车信息" align="center" prop="parkCarInfo"/>
+      <el-table-column label="站点图片" align="center" prop="fileId" width="100">
+        <template slot-scope="scope">
+          <image-preview :src="scope.row.fileId" :width="50" :height="50"/>
+        </template>
+      </el-table-column>
+      <el-table-column label="平台类型" align="center" prop="deviceType">
+        <template slot-scope="scope">
+          <dict-tag :options="dict.type.device_type" :value="scope.row.deviceType"/>
+        </template>
+      </el-table-column>
+      <el-table-column label="开票信息" align="center" prop="receiptStatus">
+        <template slot-scope="scope">
+          <dict-tag :options="dict.type.plot_receipt_status" :value="scope.row.receiptStatus"/>
+        </template>
+      </el-table-column>
+      <el-table-column label="配套设施" align="center" prop="supportingFacilities">
+        <template slot-scope="scope">
+          <dict-tag :options="dict.type.plot_supporting_facilities"
+                    :value="scope.row.supportingFacilities ? scope.row.supportingFacilities.split(',') : []"/>
+        </template>
+      </el-table-column>
+      <el-table-column label="停车费" align="center" prop="parkCarStatus">
+        <template slot-scope="scope">
+          <dict-tag :options="dict.type.plot_park_car_status" :value="scope.row.parkCarStatus"/>
+        </template>
+      </el-table-column>
+      <el-table-column label="互联互通编号" align="center" prop="hlhtId"/>
+      <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+        <template slot-scope="scope">
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-edit"
+            @click="handleUpdate(scope.row)"
+            v-hasPermi="['operator:station:edit']"
+          >修改
+          </el-button>
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-delete"
+            @click="handleDelete(scope.row)"
+            v-hasPermi="['operator:station:remove']"
+          >删除
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <pagination
+      v-show="total>0"
+      :total="total"
+      :page.sync="queryParams.pageNum"
+      :limit.sync="queryParams.pageSize"
+      @pagination="getList"
+    />
+
+    <!-- 添加或修改站点对话框 -->
+    <el-dialog :title="title" :visible.sync="open" width="800px" append-to-body>
+      <el-form ref="form" :model="form" :rules="rules" label-width="120px">
+        <el-form-item label="站点名称" prop="stationName">
+          <el-input v-model="form.stationName" placeholder="请输入站点名称"/>
+        </el-form-item>
+        <el-form-item label="地址" prop="address">
+          <el-input v-model="form.address" placeholder="请输入地址"/>
+        </el-form-item>
+        <el-form-item label="所属地区代码" prop="regionCode">
+          <el-input v-model="form.regionCode" placeholder="请输入所属地区代码"/>
+        </el-form-item>
+        <el-form-item label="经度" prop="lat">
+          <el-input v-model="form.lat" placeholder="请输入经度"/>
+        </el-form-item>
+        <el-form-item label="纬度" prop="lng">
+          <el-input v-model="form.lng" placeholder="请输入纬度"/>
+        </el-form-item>
+        <el-form-item label="停车信息" prop="parkCarInfo">
+          <el-input v-model="form.parkCarInfo" placeholder="请输入停车信息"/>
+        </el-form-item>
+        <el-form-item label="站点图片" prop="fileId">
+          <image-upload v-model="form.fileId"/>
+        </el-form-item>
+        <el-form-item label="平台类型" prop="deviceType">
+          <el-select v-model="form.deviceType" placeholder="请选择平台类型">
+            <el-option
+              v-for="dict in dict.type.device_type"
+              :key="dict.value"
+              :label="dict.label"
+              :value="parseInt(dict.value)"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="开票信息" prop="receiptStatus">
+          <el-radio-group v-model="form.receiptStatus">
+            <el-radio
+              v-for="dict in dict.type.plot_receipt_status"
+              :key="dict.value"
+              :label="dict.value"
+            >{{ dict.label }}
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="配套设施" prop="supportingFacilities">
+          <el-checkbox-group v-model="form.supportingFacilities">
+            <el-checkbox
+              v-for="dict in dict.type.plot_supporting_facilities"
+              :key="dict.value"
+              :label="dict.value">
+              {{ dict.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="停车费" prop="parkCarStatus">
+          <el-radio-group v-model="form.parkCarStatus">
+            <el-radio
+              v-for="dict in dict.type.plot_park_car_status"
+              :key="dict.value"
+              :label="dict.value"
+            >{{ dict.label }}
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitForm">确 定</el-button>
+        <el-button @click="cancel">取 消</el-button>
       </div>
-    </div>
-    <div class="right" v-loading="loading">
-      <div class="right-title">实时监控</div>
-      <div class="name" v-if="stationName">{{ stationName }}</div>
-      <el-empty
-        description="暂无数据"
-        v-if="chargingArr.length === 0"
-      ></el-empty>
-      <div class="list" v-if="chargingArr.length">
-        <div class="station" v-for="item in chargingArr" :key="item.pileId">
-          <div class="info">
-            <div class="num">
-              <img :src="item.gunStatus === 1 ? online : offline" />
-              <span>{{ item.pileId || "--" }}-{{ item.deviceId }}</span>
-            </div>
-            <div class="status">
-              {{ getStatus(item.gunStatus) }}
-            </div>
-          </div>
-          <div class="mess">
-            <el-popover
-              placement="right"
-              title="模拟充电桩"
-              width="200"
-              trigger="click"
-            >
-              <div class="operate">
-                <el-button type="primary" @click="operateHandler('start', item)"
-                  >启动模拟充电桩</el-button
-                >
-                <el-button
-                  type="primary"
-                  v-if="item.gunStatus != 1"
-                  @click="operateHandler('link', item)"
-                  >插枪</el-button
-                >
-                <el-button
-                  type="primary"
-                  v-if="item.gunStatus != 1"
-                  @click="operateHandler('startCharge', item)"
-                  >开始充电</el-button
-                >
-                <el-button
-                  type="primary"
-                  @click="operateHandler('endCharge', item)"
-                  >停止充电</el-button
-                >
-                <el-button
-                  type="primary"
-                  v-if="item.gunInsert == 1"
-                  @click="operateHandler('unlink', item)"
-                  >拔枪</el-button
-                >
-
-                <el-button type="primary" @click="operateHandler('stop', item)"
-                  >停止模拟充电桩</el-button
-                >
-              </div>
-
-              <!-- <el-button slot="reference" class="btn">click 激活</el-button> -->
-              <i class="el-icon-s-tools operateBtn" slot="reference"></i>
-            </el-popover>
-
-            <div class="item">
-              <div class="item-value">
-                {{
-                  item.chargingCurrent
-                    ? Number(item.chargingCurrent).toFixed(2)
-                    : 0
-                }}A
-              </div>
-              <div class="item-name">电流</div>
-            </div>
-            <div class="item">
-              <div class="item-value">
-                {{
-                  item.chargingCdgl && item.chargingCurrent
-                    ? (
-                        Number(item.chargingCdgl) / Number(item.chargingCurrent)
-                      ).toFixed(2)
-                    : 0
-                }}
-              </div>
-              <div class="item-name">电压</div>
-            </div>
-            <div class="item">
-              <div class="item-value">
-                {{
-                  item.chargingCdgl ? Number(item.chargingCdgl).toFixed(2) : 0
-                }}KW
-              </div>
-              <div class="item-name">功率</div>
-            </div>
-            <div class="item">
-              <div class="item-value">{{ item.useCount || 0 }}</div>
-              <div class="item-name">次数</div>
-            </div>
-            <div class="item">
-              <div class="item-value">
-                {{ item.realHour ? (item.realHour * 60).toFixed(2) : 0 }}分钟
-              </div>
-              <div class="item-name">时间</div>
-            </div>
-            <div class="item">
-              <div class="item-value">
-                {{ item.consumePower ? item.consumePower.toFixed(2) : 0 }}度
-              </div>
-              <div class="item-name">电量</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <pagination
-        v-show="total > 0"
-        :total="total"
-        :page.sync="queryParams.pageNum"
-        :limit.sync="queryParams.pageSize"
-        @pagination="getNewStatus"
-      />
-    </div>
+    </el-dialog>
   </div>
 </template>
-·
+
 <script>
-import { listStation } from "@/api/operator/station";
-import {
-  listPort,
-  startCharge,
-  unlink,
-  stop,
-  start,
-  link,
-  endCharge,
-} from "@/api/operator/port";
+import {listStation, getStation, delStation, addStation, updateStation} from "@/api/operator/station";
+import {parseTime} from "@/utils/hcp";
+
 export default {
-  components: {},
+  name: "Station",
+  dicts: ['plot_supporting_facilities', 'sys_yes_no', 'device_type', 'plot_park_car_status', 'plot_receipt_status'],
   data() {
     return {
-      offline: require("@/assets/images/offline.png"),
-      online: require("@/assets/images/online.png"),
-      stationName: "",
-      filterText: "",
-      dataList: [],
+      // 遮罩层
+      loading: true,
+      // 选中数组
+      ids: [],
+      // 非单个禁用
+      single: true,
+      // 非多个禁用
+      multiple: true,
+      // 显示搜索条件
+      showSearch: true,
       // 总条数
       total: 0,
-      defaultkeys: [],
-      defaultProps: {
-        label: "stationName",
-      },
+      // 站点表格数据
+      stationList: [],
+      // 弹出层标题
+      title: "",
+      // 是否显示弹出层
+      open: false,
+      // 查询参数
       queryParams: {
         pageNum: 1,
         pageSize: 10,
+        stationName: null,
+        address: null,
+        regionCode: null,
+        deviceType: null,
+        isHlht: null,
+        hlhtId: null,
       },
-      loading: false,
-      chargingArr: [],
-      timer: null,
-      stationId: "",
+      // 表单参数
+      form: {},
+      // 表单校验
+      rules: {
+        stationName: [
+          {required: true, message: "站点名称不能为空", trigger: "blur"}
+        ],
+        address: [
+          {required: true, message: "地址不能为空", trigger: "blur"}
+        ],
+        regionCode: [
+          {required: true, message: "所属地区代码不能为空", trigger: "blur"}
+        ],
+      }
     };
   },
-  computed: {},
-  watch: {
-    filterText(val) {
-      this.$refs.tree.filter(val);
-    },
+  created() {
+    this.getList();
   },
   methods: {
     /** 查询站点列表 */
     getList() {
-      let tenantId = this.$store.state.user.tenantid;
       this.loading = true;
-      listStation({
-        tenantId,
-        pageNum: 1,
-        pageSize: 100000,
-      }).then((response) => {
-        this.dataList = response.data;
-        if (this.dataList.length) {
-          this.defaultkeys = [this.dataList[0].stationId];
-          this.stationName = this.dataList[0].stationName;
-          this.$nextTick(() => {
-            this.$refs.tree.setCurrentKey(this.defaultkeys[0]);
-            this.handleNodeClick(this.dataList[0]);
-          });
-        }
-
+      listStation(this.queryParams).then(response => {
+        this.stationList = response.data;
+        this.total = response.total;
         this.loading = false;
       });
     },
-    filterNode(value, data) {
-      if (!value) return true;
-      return data.stationName.indexOf(value) !== -1;
+    // 取消按钮
+    cancel() {
+      this.open = false;
+      this.reset();
     },
-    handleNodeClick(data) {
-      if (!data.stationId) {
-        return;
-      }
-      this.loading = true;
-      clearInterval(this.timer);
-      this.stationName = data.stationName;
-      this.stationId = data.stationId;
+    // 表单重置
+    reset() {
+      this.form = {
+        stationId: null,
+        stationCode: null,
+        stationName: null,
+        address: null,
+        regionCode: null,
+        userId: null,
+        createTime: null,
+        lat: null,
+        lng: null,
+        parkCarInfo: null,
+        fileId: null,
+        updateTime: null,
+        deviceType: null,
+        delFlag: null,
+        receiptStatus: "0",
+        supportingFacilities: [],
+        parkCarStatus: "0",
+        province: null,
+        city: null,
+        area: null,
+        isHlht: 0,
+        hlhtId: null,
+        tenantId: null
+      };
+      this.resetForm("form");
+    },
+    /** 搜索按钮操作 */
+    handleQuery() {
       this.queryParams.pageNum = 1;
-      listPort({ stationId: data.stationId, ...this.queryParams }).then(
-        (res) => {
-          this.total = res.total;
-          this.chargingArr = res.data;
-          this.loading = false;
-        }
-      );
-      this.timer = setInterval(() => {
-        listPort({ stationId: data.stationId, ...this.queryParams }).then(
-          (res) => {
-            this.total = res.total;
-            this.chargingArr = res.data;
-            this.loading = false;
+      this.getList();
+    },
+    /** 重置按钮操作 */
+    resetQuery() {
+      this.resetForm("queryForm");
+      this.handleQuery();
+    },
+    // 多选框选中数据
+    handleSelectionChange(selection) {
+      this.ids = selection.map(item => item.stationId)
+      this.single = selection.length !== 1
+      this.multiple = !selection.length
+    },
+    /** 新增按钮操作 */
+    handleAdd() {
+      this.reset();
+      this.open = true;
+      this.title = "添加站点";
+    },
+    /** 修改按钮操作 */
+    handleUpdate(row) {
+      this.reset();
+      const stationId = row.stationId || this.ids
+      getStation(stationId).then(response => {
+        this.form = response.data;
+        this.form.supportingFacilities = this.form.supportingFacilities.split(",");
+        this.open = true;
+        this.title = "修改站点";
+      });
+    },
+    /** 提交按钮 */
+    submitForm() {
+      this.$refs["form"].validate(valid => {
+        if (valid) {
+          this.form.supportingFacilities = this.form.supportingFacilities.join(",");
+          if (this.form.stationId != null) {
+            updateStation(this.form).then(response => {
+              this.$modal.msgSuccess("修改成功");
+              this.open = false;
+              this.getList();
+            });
+          } else {
+            addStation(this.form).then(response => {
+              this.$modal.msgSuccess("新增成功");
+              this.open = false;
+              this.getList();
+            });
           }
-        );
-      }, 10000);
-    },
-    //充电状态转换
-    getStatus(status) {
-      const typeObject = {
-        0: "空闲",
-        1: "充电",
-        2: "预约",
-        3: "正在启动充电",
-        10: "启动失败",
-        5: "充电故障",
-        "05": "充电故障",
-      };
-      return typeObject[status];
-    },
-
-    //充电状态转换
-    getPortStatus(status) {
-      const typeObject = {
-        0: "空闲",
-        1: "充电",
-        2: "预约",
-        3: "正在启动充电",
-        10: "启动失败",
-        5: "充电故障",
-        "05": "充电故障",
-      };
-      return typeObject[status];
-    },
-    //模拟桩操作
-    operateHandler(key, data) {
-      switch (key) {
-        case "start":
-          this.operateStart(data);
-          break;
-        case "link":
-          this.operateLink(data);
-          break;
-        case "startCharge":
-          this.operateStartCharge(data);
-          break;
-        case "unlink":
-          this.operateUnlink(data);
-          break;
-        case "stop":
-          this.operateStop(data);
-          break;
-        case "endCharge":
-          this.operateEndCharge(data);
-          break;
-
-        default:
-          break;
-      }
-    },
-    getNewStatus(id) {
-      this.loading = true;
-      listPort({ stationId: this.stationId, ...this.queryParams }).then(
-        (res) => {
-          this.total = res.total;
-          this.chargingArr = res.data;
-          this.loading = false;
         }
-      );
+      });
     },
-    //启动模拟充电桩
-    async operateStart(data) {
-      try {
-        const res = await start({
-          pileId: data.pileId,
-        });
-        if (res.code == 200) {
-          this.getNewStatus(data.stationId);
-          this.$message.success(res.data);
-        } else {
-          this.$message.error(res.data);
-        }
-      } catch (error) {
-        console.log("error: ", error);
-      }
+    /** 删除按钮操作 */
+    handleDelete(row) {
+      const stationIds = row.stationId || this.ids;
+      this.$modal.confirm('是否确认删除当前站点数据项？').then(function () {
+        return delStation(stationIds);
+      }).then(() => {
+        this.getList();
+        this.$modal.msgSuccess("删除成功");
+      }).catch(() => {
+      });
     },
-    //插枪
-    async operateLink(data) {
-      try {
-        const res = await link({
-          pileId: data.pileId,
-          deviceId: data.deviceId,
-        });
-        if (res.code == 200) {
-          this.getNewStatus(data.stationId);
-          this.$message.success(res.data);
-        } else {
-          this.$message.error(res.data);
-        }
-      } catch (error) {
-        console.log("error: ", error);
-      }
-    },
-    //开始充电
-    async operateStartCharge(data) {
-      console.log("data: ", data);
-      try {
-        const res = await startCharge({
-          userId: data.userId,
-          pileId: data.pileId,
-          deviceId: data.deviceId,
-        });
-        if (res.code == 200) {
-          this.getNewStatus(data.stationId);
-          this.$message.success(res.data);
-        } else {
-          this.$message.error(res.data);
-        }
-      } catch (error) {
-        console.log("error: ", error);
-      }
-    },
-    //停止充电
-    async operateEndCharge(data) {
-      try {
-        const res = await endCharge({
-          pileId: data.pileId,
-          deviceId: data.deviceId,
-        });
-        if (res.code == 200) {
-          this.getNewStatus(data.stationId);
-          this.$message.success(res.data);
-        } else {
-          this.$message.error(res.data);
-        }
-      } catch (error) {
-        console.log("error: ", error);
-      }
-    },
-
-    //拔枪
-    async operateUnlink(data) {
-      try {
-        const res = await unlink({
-          pileId: data.pileId,
-          deviceId: data.deviceId,
-        });
-        if (res.code == 200) {
-          this.getNewStatus(data.stationId);
-          this.$message.success(res.data);
-        } else {
-          this.$message.error(res.data);
-        }
-      } catch (error) {
-        console.log("error: ", error);
-      }
-    },
-    //停止模拟器
-    async operateStop(data) {
-      try {
-        const res = await stop({
-          pileId: data.pileId,
-        });
-        if (res.code == 200) {
-          this.getNewStatus(data.stationId);
-          this.$message.success(res.data);
-        } else {
-          this.$message.error(res.data);
-        }
-      } catch (error) {
-        console.log("error: ", error);
-      }
-    },
-  },
-  created() {},
-  mounted() {
-    this.getList();
-  },
-  updated() {},
-  destroyed() {},
+    /** 导出按钮操作 */
+    handleExport() {
+      this.download('operator/station/export', {
+        ...this.queryParams
+      }, `站点_${parseTime(new Date().getTime(), '{y}-{m}-{d}')}.xlsx`)
+    }
+  }
 };
 </script>
-
-
-<style scoped lang="scss">
-.content{
-    display: flex;
-}
-
-.left{
-	width: 250px;
-
-	.list{
-		width: 250px;
-	    display: flex;
-	    flex-direction: column;
-	}
-}
-
-.tree{
-	width: 250px;
-}
-
-.right{
-	flex: 1;
-	margin-left: 100px;
-}
-
-.list{
-	display: flex;
-    width: 100%;
-}
-
-.station{
-	width: 25%;
-}
-
-.item{
-	display: flex;
-}
-
-.item-value{
-	margin-right: 20px;
-	width: 60px;
-}
-</style>
